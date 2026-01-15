@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 const WPM_OPTIONS = [300, 400, 500, 600];
@@ -14,6 +15,9 @@ export default function SpeedReader() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [wpm, setWpm] = useState(300);
   const [hasStarted, setHasStarted] = useState(false);
+  const [url, setUrl] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const intervalMs = (60 / wpm) * 1000;
@@ -51,6 +55,45 @@ export default function SpeedReader() {
   const handleTextChange = (newText: string) => {
     setText(newText);
     parseText(newText);
+    setError("");
+  };
+
+  const handleClear = () => {
+    setText("");
+    setWords([]);
+    setCurrentIndex(0);
+    setHasStarted(false);
+    setIsPlaying(false);
+    setUrl("");
+    setError("");
+  };
+
+  const handleFetchUrl = async () => {
+    if (!url.trim()) return;
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/fetch-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Failed to fetch URL");
+        return;
+      }
+
+      handleTextChange(data.text);
+    } catch {
+      setError("Failed to fetch URL");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -78,12 +121,52 @@ export default function SpeedReader() {
     <div className="flex flex-col gap-6 w-full max-w-xl mx-auto px-4">
       {!hasStarted ? (
         <div className="flex flex-col gap-4">
-          <Textarea
-            value={text}
-            onChange={(e) => handleTextChange(e.target.value)}
-            placeholder="Paste or type the text you want to speed read..."
-            className="min-h-[200px] text-base"
-          />
+          <div className="flex gap-2">
+            <Input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="Paste a URL to fetch text..."
+              className="flex-1"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleFetchUrl();
+                }
+              }}
+            />
+            <Button
+              onClick={handleFetchUrl}
+              disabled={!url.trim() || isLoading}
+              variant="secondary"
+            >
+              {isLoading ? "..." : "Fetch"}
+            </Button>
+          </div>
+
+          {error && (
+            <p className="text-sm text-destructive text-center">{error}</p>
+          )}
+
+          <div className="relative">
+            <Textarea
+              value={text}
+              onChange={(e) => handleTextChange(e.target.value)}
+              placeholder="Or paste/type text directly..."
+              className="min-h-[200px] text-base pr-16"
+            />
+            {text && (
+              <Button
+                onClick={handleClear}
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+
           <p className="text-sm text-muted-foreground text-center">
             {words.length > 0 ? `${words.length} words` : "Enter text to begin"}
           </p>
@@ -101,7 +184,7 @@ export default function SpeedReader() {
             {isFinished ? (
               <p className="text-2xl text-muted-foreground">Done</p>
             ) : (
-              <p className="text-5xl sm:text-6xl font-bold text-center break-all leading-tight" style={{ fontFamily: 'var(--font-faculty-glyphic)' }}>
+              <p className="text-4xl sm:text-5xl font-bold text-center break-all leading-tight" style={{ fontFamily: 'var(--font-faculty-glyphic)' }}>
                 {currentWord}
               </p>
             )}
