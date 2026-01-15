@@ -23,8 +23,11 @@ export default function SpeedReader() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains("dark");
+    // Check if user has a system preference for dark mode
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDarkMode = document.documentElement.classList.contains("dark") || prefersDark;
     setIsDark(isDarkMode);
+    document.documentElement.classList.toggle("dark", isDarkMode);
   }, []);
 
   const toggleDarkMode = () => {

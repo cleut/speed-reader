@@ -19,7 +19,7 @@ const facultyGlyphic = Faculty_Glyphic({
 });
 
 export const metadata: Metadata = {
-  title: "Speed Reader - RSVP",
+  title: "Speed Reader",
   description: "A rapid serial visual presentation speed reading app",
 };
 
