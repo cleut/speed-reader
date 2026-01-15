@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
 const WPM_OPTIONS = [300, 400, 500, 600];
@@ -155,7 +156,7 @@ export default function SpeedReader() {
               placeholder="Or paste/type text directly..."
               className="min-h-[200px] text-base pr-16"
             />
-            {text && (
+            {(text || url) && (
               <Button
                 onClick={handleClear}
                 variant="ghost"
@@ -173,13 +174,6 @@ export default function SpeedReader() {
         </div>
       ) : (
         <div className="flex flex-col items-center gap-6">
-          <div className="w-full bg-secondary rounded-full h-1.5">
-            <div
-              className="bg-primary h-1.5 rounded-full transition-all duration-75"
-              style={{ width: `${Math.min(progress, 100)}%` }}
-            />
-          </div>
-
           <div className="flex items-center justify-center min-h-[180px] w-full">
             {isFinished ? (
               <p className="text-2xl text-muted-foreground">Done</p>
@@ -190,23 +184,37 @@ export default function SpeedReader() {
             )}
           </div>
 
-          <p className="text-sm text-muted-foreground">
-            {Math.min(currentIndex + 1, words.length)} / {words.length}
-          </p>
+          <div className="w-full flex flex-col gap-2">
+            <Slider
+              value={[currentIndex]}
+              min={0}
+              max={Math.max(0, words.length - 1)}
+              step={1}
+              onValueChange={([value]) => {
+                setCurrentIndex(value);
+                if (isFinished) {
+                  setIsPlaying(false);
+                }
+              }}
+              className="w-full touch-pan-y"
+            />
+            <p className="text-sm text-muted-foreground text-center">
+              {Math.min(currentIndex + 1, words.length)} / {words.length}
+            </p>
+          </div>
         </div>
       )}
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground text-center">Words per minute</p>
-          <div className="flex items-center justify-center gap-1">
+          <div className="flex items-center justify-center gap-2">
             {WPM_OPTIONS.map((option) => (
               <Button
                 key={option}
                 variant={wpm === option ? "default" : "outline"}
-                size="sm"
                 onClick={() => setWpm(option)}
-                className={cn("flex-1 max-w-20")}
+                className={cn("flex-1 h-12 text-base")}
               >
                 {option}
               </Button>
@@ -219,7 +227,7 @@ export default function SpeedReader() {
             <Button
               onClick={handleStart}
               disabled={words.length === 0}
-              className="flex-1 h-12 text-base"
+              className="flex-1 h-14 text-lg"
               size="lg"
             >
               Start
@@ -230,7 +238,7 @@ export default function SpeedReader() {
                 <Button
                   onClick={handlePause}
                   variant="secondary"
-                  className="flex-1 h-12 text-base"
+                  className="flex-1 h-14 text-lg"
                   size="lg"
                 >
                   Pause
@@ -243,7 +251,7 @@ export default function SpeedReader() {
                     }
                     setIsPlaying(true);
                   }}
-                  className="flex-1 h-12 text-base"
+                  className="flex-1 h-14 text-lg"
                   size="lg"
                 >
                   {isFinished ? "Replay" : "Resume"}
@@ -252,7 +260,7 @@ export default function SpeedReader() {
               <Button
                 onClick={handleReset}
                 variant="outline"
-                className="h-12 text-base px-6"
+                className="h-14 text-lg px-8"
                 size="lg"
               >
                 New
