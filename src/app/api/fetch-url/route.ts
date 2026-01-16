@@ -124,10 +124,59 @@ export async function POST(request: NextRequest) {
     }
 
     // Clean up the text
-    const text = extractedText
+    let text = extractedText
       .replace(/\s+/g, " ")
       .replace(/\n+/g, " ")
       .trim();
+
+    // Remove common junk phrases
+    const junkPatterns = [
+      /read more\.?/gi,
+      /continue reading\.?/gi,
+      /click here\.?/gi,
+      /subscribe( now)?\.?/gi,
+      /sign up( for)?( our)?( newsletter)?\.?/gi,
+      /newsletter/gi,
+      /advertisement\.?/gi,
+      /sponsored( content)?\.?/gi,
+      /share this( article)?\.?/gi,
+      /share on (facebook|twitter|linkedin|x)\.?/gi,
+      /follow us( on)?\.?/gi,
+      /related articles?\.?/gi,
+      /recommended( for you)?\.?/gi,
+      /you may also like\.?/gi,
+      /more from\.?/gi,
+      /trending( now)?\.?/gi,
+      /popular( articles)?\.?/gi,
+      /most read\.?/gi,
+      /editors?[''']?s? picks?\.?/gi,
+      /skip to (main )?content\.?/gi,
+      /menu/gi,
+      /search/gi,
+      /log ?in/gi,
+      /sign ?in/gi,
+      /create( an)? account\.?/gi,
+      /already a (member|subscriber)\??/gi,
+      /\d+ min(ute)?s? read/gi,
+      /reading time:? \d+ min(ute)?s?/gi,
+      /published:?/gi,
+      /updated:?/gi,
+      /by [a-z]+ [a-z]+,? (staff|writer|reporter|editor|correspondent)/gi,
+      /\|\s*$/g,
+      /^\s*\|/g,
+      /copyright ©?.*/gi,
+      /all rights reserved\.?/gi,
+      /terms (of (use|service)|and conditions)\.?/gi,
+      /privacy policy\.?/gi,
+      /cookie policy\.?/gi,
+    ];
+
+    for (const pattern of junkPatterns) {
+      text = text.replace(pattern, " ");
+    }
+
+    // Clean up multiple spaces again after removal
+    text = text.replace(/\s+/g, " ").trim();
 
     if (!text || text.length < 50) {
       return NextResponse.json({ error: "No readable content found" }, { status: 400 });

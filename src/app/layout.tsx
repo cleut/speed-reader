@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Faculty_Glyphic } from "next/font/google";
+import { Geist, Geist_Mono, Faculty_Glyphic, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,6 +18,12 @@ const facultyGlyphic = Faculty_Glyphic({
   weight: "400",
 });
 
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+});
+
 export const metadata: Metadata = {
   title: "Speed Reader",
   description: "A rapid serial visual presentation speed reading app",
@@ -31,7 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${facultyGlyphic.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${facultyGlyphic.variable} ${ibmPlexMono.variable} antialiased`}
       >
         {children}
       </body>
