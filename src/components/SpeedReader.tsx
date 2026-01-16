@@ -12,20 +12,22 @@ const WPM_OPTIONS = [300, 400, 500, 600];
 const STORAGE_KEY = "speed-reader-progress";
 const STATS_KEY = "speed-reader-stats";
 
+interface HNStory {
+  id: number;
+  title: string;
+  url: string;
+  score: number;
+  by: string;
+  time: number;
+  comments: number;
+}
+
 // Check if word ends with punctuation that needs a pause
 function getPauseMultiplier(word: string): number {
   if (/[.!?]$/.test(word)) return 2.0; // Full stop, exclamation, question
   if (/[,;:]$/.test(word)) return 1.4; // Comma, semicolon, colon
   if (/[-—]$/.test(word)) return 1.2; // Dash
   return 1.0;
-}
-
-// Format time in minutes and seconds
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  if (mins === 0) return `${secs}s`;
-  return `${mins}m ${secs}s`;
 }
 
 // Estimate reading time
@@ -64,6 +66,8 @@ export default function SpeedReader() {
   const [hasSavedProgress, setHasSavedProgress] = useState(false);
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   const [wordsReadThisSession, setWordsReadThisSession] = useState(0);
+  const [hnStories, setHnStories] = useState<HNStory[]>([]);
+  const [isLoadingStories, setIsLoadingStories] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const baseIntervalMs = (60 / wpm) * 1000;
@@ -89,6 +93,53 @@ export default function SpeedReader() {
     const newDark = !isDark;
     setIsDark(newDark);
     document.documentElement.classList.toggle("dark", newDark);
+  };
+
+  const fetchHNStories = useCallback(async () => {
+    setIsLoadingStories(true);
+    try {
+      const response = await fetch("/api/hackernews");
+      const data = await response.json();
+      if (response.ok && data.stories) {
+        setHnStories(data.stories);
+      }
+    } catch (err) {
+      console.error("Failed to fetch HN stories:", err);
+    } finally {
+      setIsLoadingStories(false);
+    }
+  }, []);
+
+  // Fetch HN stories on mount
+  useEffect(() => {
+    fetchHNStories();
+  }, [fetchHNStories]);
+
+  const handleSelectStory = async (story: HNStory) => {
+    setUrl(story.url);
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/fetch-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: story.url }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Failed to fetch article");
+        return;
+      }
+
+      handleTextChange(data.text);
+    } catch {
+      setError("Failed to fetch article");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const parseText = useCallback((inputText: string) => {
@@ -326,6 +377,49 @@ export default function SpeedReader() {
           {error && (
             <p className="text-sm text-destructive text-center">{error}</p>
           )}
+
+          {/* Hacker News Stories Section */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-medium text-muted-foreground">Top Hacker News</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={fetchHNStories}
+                disabled={isLoadingStories}
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                {isLoadingStories ? (
+                  <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+                )}
+              </Button>
+            </div>
+            {hnStories.length > 0 && (
+              <div className="flex flex-col gap-1 max-h-[240px] overflow-y-auto rounded-lg border bg-secondary/30 p-2">
+                {hnStories.map((story, index) => (
+                  <button
+                    key={story.id}
+                    onClick={() => handleSelectStory(story)}
+                    disabled={isLoading}
+                    className="flex items-start gap-2 p-2 text-left rounded-md hover:bg-secondary transition-colors disabled:opacity-50"
+                  >
+                    <span className="text-xs text-muted-foreground min-w-[1.25rem]">{index + 1}.</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-snug line-clamp-2">{story.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {story.score} pts · {story.comments} comments
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="relative">
             <Textarea
